@@ -196,6 +196,8 @@ For more examples see the complete operating system for C64 and VC20
 #define CPU_45GS02  8
 #define CPU_65816  16
 
+#define MAX_MEMORY_SIZE 0x50000
+
 #define C45 0xf7
 #define C16 0xef
 
@@ -642,7 +644,7 @@ char  Lst[256];
 char  Pre[256];
 char  Ext[5];
 
-int GenStart = 0x10000 ; // Lowest assemble address
+int GenStart = MAX_MEMORY_SIZE ; // Lowest assemble address
 int GenEnd   =       0 ; //Highest assemble address
 
 // These arrays hold the parameter for storage files
@@ -659,7 +661,7 @@ int StoreCount = 0;
 // overflows are detected after using the new value.
 // So references to pc + n do no harm if pc is near the boundary
 
-unsigned char ROM[0x10100]; // binary 64K plus 1 page
+unsigned char ROM[MAX_MEMORY_SIZE+256]; // binary 64K plus 1 page
 
 
 FILE *sf;
@@ -1986,6 +1988,45 @@ void ListSizeInfo()
    }
 }
 
+//	MGB added incbin 
+char *IncludeBin(char *p)
+{
+   char FileName[256];
+   char *fp;
+	 int len;
+	 FILE *bfp;
+   p = NeedChar(p,'"');
+   if (!p)
+   {
+      ErrorMsg("Missing quoted filename after .INCBIN\n");
+      exit(1);
+   }
+   fp = FileName;
+   ++p;
+   while (*p != 0 && *p != '"') *fp++ = *p++;
+   *fp = 0;
+	
+	bfp = fopen(FileName,"rb");
+
+	if (bfp==NULL)
+	{
+		ErrorMsg("Missing quoted file .INCBIN\n");
+		exit(1);
+	}
+
+	fseek(bfp,0,SEEK_END);
+	len = ftell(bfp);
+	fseek(bfp,0,SEEK_SET);
+
+	if (Pass == MaxPass)
+	{
+		printf("loading %s\n",FileName);
+		fread(&ROM[pc],len,1,bfp);
+	}
+	fclose(bfp);
+	pc += len;
+	return p;
+}
 
 char *IncludeFile(char *p)
 {
@@ -2060,7 +2101,7 @@ char *ParseStoreData(char *p)
       exit(1);
    }
    p = EvalOperand(p+1,&Length,0);
-   if (Length < 0 || Length > 0x10000)
+   if (Length < 0 || Length > MAX_MEMORY_SIZE)
    {
       ErrorMsg("Illegal length for STORE %d\n",Length);
       exit(1);
@@ -2357,13 +2398,14 @@ char *IsPseudo(char *p)
    else if (!Strncasecmp(p,"ORG",3))     p = SetPC(p);
    else if (!Strncasecmp(p,"LOAD",4))    WriteLA = 1;
    else if (!Strncasecmp(p,"INCLUDE",7)) p = IncludeFile(p+7);
+	 else if (!Strncasecmp(p,"INCBIN",6))	 p = IncludeBin(p+6);
    else if (!Strncasecmp(p,"SIZE",4))    ListSizeInfo();
    else if (!Strncasecmp(p,"SKI",3))     p += strlen(p);
    else if (!Strncasecmp(p,"PAG",3))     p += strlen(p);
    else if (!Strncasecmp(p,"NAM",3))     p += strlen(p);
    else if (!Strncasecmp(p,"SUBTTL",6))  p += strlen(p);
    else if (!Strncasecmp(p,"END",3))     p += strlen(p);
-   if (pc > 0x10000 && pc != UNDEF)
+   if (pc > MAX_MEMORY_SIZE && pc != UNDEF)
    {
       ErrorMsg("Program counter overflow\n");
       ErrorLine(p);
