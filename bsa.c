@@ -63,6 +63,7 @@ Examples of pseudo opcodes (directives):
 .FILL  N ($EA)                 fill memory with N bytes containing $EA
 .FILL  $A000 - * (0)           fill memory from pc(*) upto $9FFF
 .INCLUDE "filename"            includes specified file
+.INCBIN "filename"						 insert binary data 
 .END                           stops assembly
 .CASE -                        symbols are not case sensitive
 TXTTAB .BSS 2                  define TXTTAB and increase address pointer by 2
@@ -2020,7 +2021,6 @@ char *IncludeBin(char *p)
 
 	if (Pass == MaxPass)
 	{
-		printf("loading %s\n",FileName);
 		fread(&ROM[pc],len,1,bfp);
 	}
 	fclose(bfp);
